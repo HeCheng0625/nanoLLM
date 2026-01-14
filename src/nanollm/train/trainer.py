@@ -1,0 +1,1 @@
+"""Accelerate-based trainer placeholder."""

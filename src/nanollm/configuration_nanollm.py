@@ -1,0 +1,1 @@
+"""HF-style configuration placeholder."""
