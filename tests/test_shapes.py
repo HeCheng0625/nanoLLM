@@ -1,1 +1,0 @@
-"""Shape tests placeholder."""

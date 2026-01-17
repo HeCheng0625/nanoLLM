@@ -1,1 +1,0 @@
-"""Attention equivalence tests placeholder."""
