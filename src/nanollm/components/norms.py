@@ -1,1 +1,22 @@
-"""Normalization layers placeholder."""
+import torch
+import torch.nn as nn
+
+
+class NanoRMSNorm(nn.Module):
+    def __init__(self, hidden_size: int, eps: float = 1e-6) -> None:
+        super().__init__()
+        self.eps = eps
+        # Initialize learnable weight parameter (scale)
+        self.weight = nn.Parameter(torch.ones(hidden_size))
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        """
+        Input: [batch, seq_len, hidden_size]
+        Output: [batch, seq_len, hidden_size]
+        """
+        # Implement RMSNorm calculation: x * rsqrt(x.pow(2).mean(-1, keepdim=True) + eps)
+        input_dtype = hidden_states.dtype
+        hidden_states = hidden_states.to(torch.float32)
+        variance = hidden_states.pow(2).mean(-1, keepdim=True)
+        hidden_states = hidden_states * torch.rsqrt(variance + self.eps)
+        return self.weight * hidden_states.to(input_dtype)
