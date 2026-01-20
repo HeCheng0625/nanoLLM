@@ -147,8 +147,9 @@ class NanoLLMConfig(PretrainedConfig):
         shared_expert_intermediate_size: int | None = 0,
         use_mhc: bool | None = False,
         use_engram: bool | None = False,
-        # bos_token_id: int | None = 151643,
-        # eos_token_id: int | None = 151645,
+        bos_token_id: int | None = 151643,
+        eos_token_id: int | None = 151645,
+        pad_token_id: int | None = 151643,
         torch_dtype: str | None = "bfloat16",
         **kwargs,
     ):
@@ -217,6 +218,11 @@ class NanoLLMConfig(PretrainedConfig):
         # Experimental
         self.use_mhc = use_mhc
         self.use_engram = use_engram
+
+        # Tokenizer
+        self.bos_token_id = bos_token_id
+        self.eos_token_id = eos_token_id
+        self.pad_token_id = pad_token_id
 
         super().__init__(
             tie_word_embeddings=tie_word_embeddings,
