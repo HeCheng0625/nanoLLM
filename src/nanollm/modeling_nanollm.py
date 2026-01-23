@@ -50,6 +50,7 @@ class NanoLLMDecoderLayer(nn.Module):
         use_cache: bool | None = False,
         cache_position: torch.LongTensor | None = None,
         position_embeddings: tuple[torch.Tensor, torch.Tensor] | None = None,
+        **kwargs,
     ) -> torch.Tensor:
 
         # TODO: Implement Residual Connection Structure
@@ -90,6 +91,7 @@ class NanoLLMPreTrainedModel(PreTrainedModel):
     _supports_flash_attn = True
     _supports_sdpa = True
     _supports_flex_attn = True
+    _supports_flash_attn_2 = True
 
     _can_compile_fullgraph = True
     _supports_attention_backend = True
@@ -136,8 +138,8 @@ class NanoLLMModel(NanoLLMPreTrainedModel):
         use_cache: bool | None = None,
         output_attentions: bool | None = None,
         output_hidden_states: bool | None = None,
-        return_dict: bool | None = None,
         cache_position: torch.LongTensor | None = None,
+        **kwargs,
     ) -> BaseModelOutputWithPast | Tuple[torch.Tensor, ...]:
 
         if inputs_embeds is None:
@@ -146,7 +148,10 @@ class NanoLLMModel(NanoLLMPreTrainedModel):
         hidden_states = inputs_embeds
 
         if use_cache and past_key_values is None:
-            past_key_values = DynamicCache(config=self.config)
+            try:
+                past_key_values = DynamicCache(config=self.config)
+            except:
+                past_key_values = DynamicCache()
 
         if cache_position is None:
             past_seen_tokens = (
@@ -217,13 +222,13 @@ class NanoLLMModel(NanoLLMPreTrainedModel):
         """
 
         if self.config._attn_implementation == "flash_attention_2":
-            if attention_mask is not None:
+            if attention_mask is not None and 0.0 in attention_mask:
                 return attention_mask
             else:
                 return None
 
         if self.config._attn_implementation == "sdpa":
-            if attention_mask is None:
+            if attention_mask is None or 0.0 not in attention_mask:
                 return None
 
         batch_size, seq_len = input_tensor.shape[0], input_tensor.shape[1]
@@ -266,7 +271,13 @@ class NanoLLMModel(NanoLLMPreTrainedModel):
 
             causal_mask = causal_mask + padding_mask
 
-        return causal_mask
+            # # bool padding positions: True means "masked"
+            # pad_mask = attention_mask[:, None, None, :].expand(batch_size, 1, seq_len, -1) == 0
+
+            # # Instead of adding a huge negative number, just set masked positions to min_dtype
+            # causal_mask = causal_mask.masked_fill(pad_mask, min_dtype)
+
+        return causal_mask.contiguous()
 
 
 class NanoLLMForCausalLM(NanoLLMPreTrainedModel, GenerationMixin):
@@ -281,6 +292,7 @@ class NanoLLMForCausalLM(NanoLLMPreTrainedModel, GenerationMixin):
     def __init__(self, config: NanoLLMConfig):
         super().__init__(config)
         self.model = NanoLLMModel(config)
+        self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         self.post_init()
@@ -296,6 +308,7 @@ class NanoLLMForCausalLM(NanoLLMPreTrainedModel, GenerationMixin):
         use_cache: bool | None = None,
         cache_position: torch.LongTensor | None = None,
         logits_to_keep: int | torch.Tensor = 0,
+        **kwargs,
     ) -> CausalLMOutputWithPast:
 
         # 1. Forward body

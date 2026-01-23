@@ -34,6 +34,7 @@ def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
     hidden_states = (
         hidden_states[:, :, None, :, :]
         .expand(bsz, n_kv_heads, n_rep, seq_len, head_dim)
+        .contiguous()
         .reshape(bsz, n_kv_heads * n_rep, seq_len, head_dim)
     )
     return hidden_states
